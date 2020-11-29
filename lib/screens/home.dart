@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:geofence/screens/map.dart';
 import 'package:geofence/utilities/constants.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:location/location.dart' hide LocationAccuracy;
-import 'package:connectivity/connectivity.dart';
 
 class Home extends StatefulWidget {
   @override
@@ -15,7 +13,6 @@ class _HomeState extends State<Home> {
   Location location = new Location();
   bool _serviceEnabled;
   PermissionStatus _permissionGranted;
-  LocationData _locationData;
   Position _position;
   bool isInitPosition = false;
 
@@ -41,10 +38,9 @@ class _HomeState extends State<Home> {
         return;
       }
     }
-    _locationData = await location.getLocation();
     _position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    print('_position : $_position');
 
-    print('_position : ${_position}');
     setState(() {
       isInitPosition = true;
     });
@@ -72,24 +68,27 @@ class _HomeState extends State<Home> {
             children: [
               Center(
                   child: (isInitPosition == true)
-                      ? RaisedButton(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18.0),
-                            side: BorderSide(color: kPrimaryColor),
-                          ),
-                          color: kSecondaryColor,
-                          onPressed: () {
-                            print('_position 2: ${_position}');
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => Map(
-                                          location: _position,
-                                        )));
-                          },
-                          child: Text(
-                            "Let's go!",
-                            style: TextStyle(color: Colors.white),
+                      ? Container(
+                          width: 120,
+                          height: 60,
+                          child: RaisedButton(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(50.0),
+                              side: BorderSide(color: kPrimaryColor),
+                            ),
+                            color: kSecondaryColor,
+                            onPressed: () {
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => Map(
+                                            location: _position,
+                                          )));
+                            },
+                            child: Text(
+                              "Let's go!",
+                              style: TextStyle(color: Colors.white),
+                            ),
                           ),
                         )
                       : CircularProgressIndicator(

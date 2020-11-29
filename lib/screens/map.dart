@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:collection';
 import 'package:connectivity/connectivity.dart';
 import 'package:cross_connectivity/cross_connectivity.dart' hide Connectivity;
@@ -6,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:geofence/utilities/constants.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Map extends StatefulWidget {
   final Position location;
@@ -15,45 +17,31 @@ class Map extends StatefulWidget {
 }
 
 class _MapState extends State<Map> {
+  final Connectivity _connectivity = Connectivity();
   Position _locationData;
   Set<Circle> _circles = HashSet<Circle>();
-  double radius = 50.0;
+  double radius = 100.0;
   int _circleIdCounter = 1;
-  final Connectivity _connectivity = Connectivity();
   String _connectionStatus = 'Unknown';
   String specificWifiName = 'Specific Wifi Name';
-  Future<String> _futureGetWifiName;
+  String connectedWifiName = 'Disconnected';
   bool isInTheZone = false;
   bool isConnectedToSpecificWifi;
+  StreamSubscription<ConnectivityResult> _connectivitySubscription;
 
   @override
   void initState() {
     super.initState();
     _locationData = widget.location;
-    print('_locationData : $_locationData');
     initConnectivity();
-    _futureGetWifiName = _connectivity.getWifiName();
+    _getLocalDataWifiName();
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((ConnectivityResult result) => _getWifiName());
   }
 
-  void _setCircles(LatLng point) {
-    double distanceInMeters = Geolocator.distanceBetween(_locationData.latitude, _locationData.longitude, point.latitude, point.longitude);
-    print('distanceInMeters : $distanceInMeters');
-
-    if (distanceInMeters < radius)
-      setState(() => isInTheZone = true);
-    else
-      setState(() => isInTheZone = false);
-
-    final String circleIdVal = 'circle_id_$_circleIdCounter';
-    _circleIdCounter++;
-    print('Circle | Latitude: ${point.latitude}  Longitude: ${point.longitude}  Radius: $radius');
-    _circles.add(Circle(
-        circleId: CircleId(circleIdVal),
-        center: point,
-        radius: radius,
-        fillColor: kPrimaryColor.withOpacity(0.2),
-        strokeWidth: 3,
-        strokeColor: kSecondaryColor));
+  @override
+  void dispose() {
+    _connectivitySubscription.cancel();
+    super.dispose();
   }
 
   @override
@@ -78,108 +66,116 @@ class _MapState extends State<Map> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          showRadiusSetting();
-        },
-        icon: Icon(Icons.radio_button_unchecked_sharp),
-        label: Text('Set Radius'),
-        backgroundColor: kPrimaryColor,
-      ),
-      body: Stack(
-        children: <Widget>[
-          GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: LatLng(_locationData.latitude, _locationData.longitude),
-              zoom: 16,
-            ),
-            mapType: MapType.normal,
-            circles: _circles,
-            myLocationEnabled: true,
-            onTap: (point) {
-              setState(() {
-                _circles.clear();
-                _setCircles(point);
-              });
-            },
+      floatingActionButton: buildSetRadiusFloatingActionButton(),
+      body: buildMainBody(),
+    );
+  }
+
+  Stack buildMainBody() {
+    return Stack(
+      children: <Widget>[
+        GoogleMap(
+          initialCameraPosition: CameraPosition(
+            target: LatLng(_locationData.latitude, _locationData.longitude),
+            zoom: 16,
           ),
-          SingleChildScrollView(
-            child: Container(
-              width: double.infinity,
-              color: Colors.white,
-              child: Center(
-                child: ConnectivityBuilder(builder: (context, isConnected, status) {
-                  return FutureBuilder<String>(
-                      future: _futureGetWifiName,
-                      builder: (context, AsyncSnapshot<String> wifiName) {
-                        (wifiName.data == specificWifiName) ? isConnectedToSpecificWifi = true : isConnectedToSpecificWifi = false;
+          mapType: MapType.normal,
+          circles: _circles,
+          myLocationEnabled: true,
+          onTap: (point) {
+            setState(() {
+              _circles.clear();
+              _setCircles(point);
+            });
+          },
+        ),
+        SingleChildScrollView(
+          child: Container(
+            width: double.infinity,
+            color: Colors.white,
+            child: Center(
+              child: ConnectivityBuilder(builder: (context, isConnected, status) {
+                return FutureBuilder<String>(
+                    future: _connectivity.getWifiName(),
+                    builder: (context, snapshot) {
+                      List<Widget> children;
+                      if (snapshot.hasData) {
+                        (snapshot.data == specificWifiName) ? isConnectedToSpecificWifi = true : isConnectedToSpecificWifi = false;
                         if (status != ConnectivityStatus.wifi) isConnectedToSpecificWifi = false;
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                SizedBox(width: 15),
-                                Icon(Icons.wifi_lock),
-                                SizedBox(width: 8),
-                                Text('$specificWifiName'),
-                                SizedBox(width: 8),
-                                Icon(Icons.link),
-                                SizedBox(width: 8),
-                                Text(status == ConnectivityStatus.wifi ? '${wifiName.data}' : 'Disconnected'),
-                              ],
-                            ),
-                            SizedBox(width: 15),
-                            Container(
-                              height: 30,
-                              width: MediaQuery.of(context).size.width,
-                              color: isInTheZone ? Colors.lightGreenAccent : Colors.yellowAccent,
-                              child: Center(
-                                child: Text(
-                                  isInTheZone ? 'IN THE ZONE' : 'NOT IN THE ZONE',
-                                  style: TextStyle(color: Colors.blueGrey),
-                                ),
+                        connectedWifiName = snapshot.data;
+                        children = <Widget>[
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(width: 15),
+                              Icon(Icons.wifi_lock),
+                              SizedBox(width: 8),
+                              Text('$specificWifiName'),
+                              SizedBox(width: 8),
+                              Icon(Icons.link),
+                              SizedBox(width: 8),
+                              Text(status == ConnectivityStatus.wifi ? connectedWifiName : 'Disconnected'),
+                            ],
+                          ),
+                          SizedBox(width: 15),
+                          Container(
+                            height: 30,
+                            width: MediaQuery.of(context).size.width,
+                            color: isInTheZone ? Colors.lightGreenAccent : Colors.yellowAccent,
+                            child: Center(
+                              child: Text(
+                                isInTheZone ? 'IN THE ZONE' : 'NOT IN THE ZONE',
+                                style: TextStyle(color: Colors.blueGrey),
                               ),
                             ),
-                            Container(
-                              height: 30,
-                              width: MediaQuery.of(context).size.width,
-                              color: isConnectedToSpecificWifi ? Colors.lightGreenAccent : Colors.redAccent,
-                              child: Center(
-                                child: Text(
-                                  isConnectedToSpecificWifi ? 'INSIDE' : 'OUTSIDE',
-                                  style: TextStyle(color: Colors.blueGrey),
-                                ),
+                          ),
+                          Container(
+                            height: 30,
+                            width: MediaQuery.of(context).size.width,
+                            color: isConnectedToSpecificWifi ? Colors.lightGreenAccent : Colors.redAccent,
+                            child: Center(
+                              child: Text(
+                                isConnectedToSpecificWifi ? 'INSIDE' : 'OUTSIDE',
+                                style: TextStyle(color: Colors.blueGrey),
                               ),
                             ),
-                          ],
-                        );
-                      });
+                          ),
+                        ];
+                      } else {
+                        children = <Widget>[
+                          SizedBox(
+                            child: CircularProgressIndicator(),
+                            width: 60,
+                            height: 60,
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.only(top: 16),
+                            child: Text('Awaiting result...'),
+                          )
+                        ];
+                      }
 
-                  // return Row(
-                  //   mainAxisSize: MainAxisSize.min,
-                  //   children: <Widget>[
-                  //     Icon(
-                  //       isConnected == true ? Icons.signal_wifi_4_bar : Icons.signal_wifi_off,
-                  //       color: isConnected == true ? Colors.green : Colors.red,
-                  //     ),
-                  //     const SizedBox(width: 8),
-                  //     Text(
-                  //       '$status',
-                  //       style: TextStyle(
-                  //         color: status != ConnectivityStatus.none ? Colors.green : Colors.red,
-                  //       ),
-                  //     ),
-                  //   ],
-                  // );
-                }),
-              ),
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: children,
+                      );
+                    });
+              }),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
+    );
+  }
+
+  FloatingActionButton buildSetRadiusFloatingActionButton() {
+    return FloatingActionButton.extended(
+      onPressed: () {
+        showRadiusSetting();
+      },
+      icon: Icon(Icons.radio_button_unchecked_sharp),
+      label: Text('Set Radius'),
+      backgroundColor: kPrimaryColor,
     );
   }
 
@@ -258,7 +254,9 @@ class _MapState extends State<Map> {
               )),
           actions: <Widget>[
             FlatButton(
-                onPressed: () {
+                onPressed: () async {
+                  SharedPreferences prefs = await SharedPreferences.getInstance();
+                  await prefs.setString('SPECIFIC_WIFI_NAME', specificWifiName);
                   setState(() {
                     _circles.clear();
                   });
@@ -272,6 +270,42 @@ class _MapState extends State<Map> {
                 )),
           ],
         ));
+  }
+
+  _getWifiName() async {
+    var wifiName = await _connectivity.getWifiName();
+    setState(() {
+      connectedWifiName = wifiName;
+    });
+  }
+
+  _getLocalDataWifiName() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String prevSpecificWifiName = prefs.getString('SPECIFIC_WIFI_NAME');
+    if (prevSpecificWifiName.isEmpty) prevSpecificWifiName = specificWifiName;
+    setState(() {
+      specificWifiName = prevSpecificWifiName;
+    });
+  }
+
+  void _setCircles(LatLng point) {
+    final String circleIdVal = 'circle_id_$_circleIdCounter';
+    _circleIdCounter++;
+    print('Circle | Latitude: ${point.latitude}  Longitude: ${point.longitude}  Radius: $radius');
+
+    _circles.add(Circle(
+        circleId: CircleId(circleIdVal),
+        center: point,
+        radius: radius,
+        fillColor: kPrimaryColor.withOpacity(0.2),
+        strokeWidth: 3,
+        strokeColor: kSecondaryColor));
+
+    double distanceInMeters = Geolocator.distanceBetween(_locationData.latitude, _locationData.longitude, point.latitude, point.longitude);
+    if (distanceInMeters < radius)
+      setState(() => isInTheZone = true);
+    else
+      setState(() => isInTheZone = false);
   }
 
   Future<void> initConnectivity() async {

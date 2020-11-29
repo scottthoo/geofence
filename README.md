@@ -1,16 +1,23 @@
 # geofence
 
-A new Flutter project.
+A Simple Flutter project that track user location is within a Geofence and connected Wifi.
+
+## Important Information
+- Main status : INSIDE | OUTSIDE
+    - If the user still connected with the specific wifi, status will consider INSIDE.
+    - If the user still connected with the specific wifi, status will consider OUTSIDE.
+
+- Secondary status : IN THE ZONE | NOT IN THE ZONE
+    - If the user location is within the radius of generated circle on the map, status will consider IN THE ZONE.
+    - If the user location is outside the radius of generated circle on the map, status will consider NOT IN THE ZONE.
 
 ## Getting Started
+Home Screen
+- Getting location permission from user before proceeding to next page.
+** User must allow the permission in order to proceed.
 
-This project is a starting point for a Flutter application.
+Map Screen
+- Tap on map to generate a Circle with default radius 100m.
+- Use the FloatActionButton to change the radius (m).
+- Use the Setting icon at top right to change the Specific wifi name.
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
-
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
