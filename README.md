@@ -1,4 +1,4 @@
-# geofence
+# Geofence
 
 A Simple Flutter project that track user location is within a Geofence and connected Wifi.
 
@@ -21,3 +21,5 @@ Map Screen
 - Use the FloatActionButton to change the radius (m).
 - Use the Setting icon at top right to change the Specific wifi name.
 
+## Debug APK Download link
+https://drive.google.com/drive/folders/16H6Mqe1w3e40gF9RYOqffzWbRmw29sNe?usp=sharing

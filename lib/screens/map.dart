@@ -26,7 +26,7 @@ class _MapState extends State<Map> {
   String specificWifiName = 'Specific Wifi Name';
   String connectedWifiName = 'Disconnected';
   bool isInTheZone = false;
-  bool isConnectedToSpecificWifi;
+  bool isConnectedToSpecificWifi = false;
   StreamSubscription<ConnectivityResult> _connectivitySubscription;
 
   @override
@@ -99,61 +99,47 @@ class _MapState extends State<Map> {
                     future: _connectivity.getWifiName(),
                     builder: (context, snapshot) {
                       List<Widget> children;
-                      if (snapshot.hasData) {
-                        (snapshot.data == specificWifiName) ? isConnectedToSpecificWifi = true : isConnectedToSpecificWifi = false;
-                        if (status != ConnectivityStatus.wifi) isConnectedToSpecificWifi = false;
-                        connectedWifiName = snapshot.data;
-                        children = <Widget>[
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              SizedBox(width: 15),
-                              Icon(Icons.wifi_lock),
-                              SizedBox(width: 8),
-                              Text('$specificWifiName'),
-                              SizedBox(width: 8),
-                              Icon(Icons.link),
-                              SizedBox(width: 8),
-                              Text(status == ConnectivityStatus.wifi ? connectedWifiName : 'Disconnected'),
-                            ],
-                          ),
-                          SizedBox(width: 15),
-                          Container(
-                            height: 30,
-                            width: MediaQuery.of(context).size.width,
-                            color: isInTheZone ? Colors.lightGreenAccent : Colors.yellowAccent,
-                            child: Center(
-                              child: Text(
-                                isInTheZone ? 'IN THE ZONE' : 'NOT IN THE ZONE',
-                                style: TextStyle(color: Colors.blueGrey),
-                              ),
+                      (snapshot.data == specificWifiName) ? isConnectedToSpecificWifi = true : isConnectedToSpecificWifi = false;
+                      if (status != ConnectivityStatus.wifi) isConnectedToSpecificWifi = false;
+                      connectedWifiName = snapshot.data ?? '';
+                      children = <Widget>[
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(width: 15),
+                            Icon(Icons.wifi_lock),
+                            SizedBox(width: 8),
+                            Text('$specificWifiName'),
+                            SizedBox(width: 8),
+                            Icon(Icons.link),
+                            SizedBox(width: 8),
+                            Text(status == ConnectivityStatus.wifi ? connectedWifiName : 'Disconnected'),
+                          ],
+                        ),
+                        SizedBox(width: 15),
+                        Container(
+                          height: 30,
+                          width: MediaQuery.of(context).size.width,
+                          color: isInTheZone ? Colors.lightGreenAccent : Colors.yellowAccent,
+                          child: Center(
+                            child: Text(
+                              isInTheZone ? 'IN THE ZONE' : 'NOT IN THE ZONE',
+                              style: TextStyle(color: Colors.blueGrey),
                             ),
                           ),
-                          Container(
-                            height: 30,
-                            width: MediaQuery.of(context).size.width,
-                            color: isConnectedToSpecificWifi ? Colors.lightGreenAccent : Colors.redAccent,
-                            child: Center(
-                              child: Text(
-                                isConnectedToSpecificWifi ? 'INSIDE' : 'OUTSIDE',
-                                style: TextStyle(color: Colors.blueGrey),
-                              ),
+                        ),
+                        Container(
+                          height: 30,
+                          width: MediaQuery.of(context).size.width,
+                          color: isConnectedToSpecificWifi ? Colors.lightGreenAccent : Colors.redAccent,
+                          child: Center(
+                            child: Text(
+                              isConnectedToSpecificWifi ? 'INSIDE' : 'OUTSIDE',
+                              style: TextStyle(color: Colors.blueGrey),
                             ),
                           ),
-                        ];
-                      } else {
-                        children = <Widget>[
-                          SizedBox(
-                            child: CircularProgressIndicator(),
-                            width: 60,
-                            height: 60,
-                          ),
-                          const Padding(
-                            padding: EdgeInsets.only(top: 16),
-                            child: Text('Awaiting result...'),
-                          )
-                        ];
-                      }
+                        ),
+                      ];
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.center,
@@ -239,10 +225,10 @@ class _MapState extends State<Map> {
               child: Material(
                 color: Colors.black,
                 child: TextField(
+                  controller: TextEditingController()..text = specificWifiName,
                   style: TextStyle(fontSize: 16, color: Colors.white),
                   decoration: InputDecoration(
-                    icon: Icon(Icons.wifi),
-                    hintText: 'myWifi',
+                    contentPadding: EdgeInsets.symmetric(horizontal: 15),
                   ),
                   keyboardType: TextInputType.emailAddress,
                   onChanged: (input) {
